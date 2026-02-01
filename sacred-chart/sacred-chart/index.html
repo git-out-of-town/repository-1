@@ -39,10 +39,20 @@
       const [showSetup, setShowSetup] = useState(false);
       const [player1Input, setPlayer1Input] = useState('');
       const [player2Input, setPlayer2Input] = useState('');
+      const [lastAction, setLastAction] = useState(null);
+      const [showUndo, setShowUndo] = useState(false);
 
       useEffect(() => {
         loadData();
       }, []);
+
+      // Auto-hide undo after 5 seconds
+      useEffect(() => {
+        if (showUndo) {
+          const timer = setTimeout(() => setShowUndo(false), 5000);
+          return () => clearTimeout(timer);
+        }
+      }, [showUndo]);
 
       const loadData = () => {
         try {
@@ -83,6 +93,11 @@
 
       const awardPoint = (player, correct) => {
         const winner = correct ? player : (player === 'player1' ? 'player2' : 'player1');
+        
+        // Store current state for undo
+        setLastAction(JSON.parse(JSON.stringify(gameData)));
+        setShowUndo(true);
+
         const newData = {
           ...gameData,
           players: {
@@ -107,8 +122,86 @@
         saveData(newData);
       };
 
-      const resetGame = () => {
-        if (confirm('Reset all scores and history? You will need to re-enter player names.')) {
+      const undoLastAction = () => {
+        if (lastAction) {
+          saveData(lastAction);
+          setLastAction(null);
+          setShowUndo(false);
+        }
+      };
+
+      const manualAdjust = (player, delta) => {
+        const playerName = gameData.players[player].name;
+        
+        if (delta === 1) {
+          // Add a point: create a history entry for this episode
+          const newData = {
+            ...gameData,
+            players: {
+              ...gameData.players,
+              [player]: {
+                ...gameData.players[player],
+                totalPoints: gameData.players[player].totalPoints + 1
+              }
+            },
+            history: [
+              {
+                season: currentSeason,
+                episode: currentEpisode,
+                predictor: playerName,
+                correct: true,
+                winner: playerName,
+                timestamp: new Date().toISOString(),
+                manual: true
+              },
+              ...gameData.history
+            ]
+          };
+          saveData(newData);
+        } else if (delta === -1) {
+          // Remove a point: find the most recent history entry for this player in this episode
+          const idx = gameData.history.findIndex(
+            h => h.season === currentSeason && h.episode === currentEpisode && h.winner === playerName
+          );
+          if (idx === -1) return; // No points to remove
+          
+          const newHistory = [...gameData.history];
+          newHistory.splice(idx, 1);
+          
+          const newData = {
+            ...gameData,
+            players: {
+              ...gameData.players,
+              [player]: {
+                ...gameData.players[player],
+                totalPoints: Math.max(0, gameData.players[player].totalPoints - 1)
+              }
+            },
+            history: newHistory
+          };
+          saveData(newData);
+        }
+      };
+
+      const resetScores = () => {
+        if (confirm('Reset all scores and history? Player names will be kept.')) {
+          const newData = {
+            players: {
+              player1: { name: gameData.players.player1.name, totalPoints: 0 },
+              player2: { name: gameData.players.player2.name, totalPoints: 0 }
+            },
+            history: []
+          };
+          saveData(newData);
+          setCurrentSeason(1);
+          setCurrentEpisode(1);
+          setLastAction(null);
+          setShowUndo(false);
+        }
+      };
+
+      const resetEverything = () => {
+        if (confirm('Reset EVERYTHING including player names?')) {
           localStorage.removeItem('sacred-chart-data');
           setGameData(null);
           setShowSetup(true);
@@ -116,6 +209,8 @@
           setPlayer2Input('');
           setCurrentSeason(1);
           setCurrentEpisode(1);
+          setLastAction(null);
+          setShowUndo(false);
         }
       };
 
@@ -234,6 +329,16 @@
                 <div className="text-center">
                   <div className="text-4xl font-bold text-teal-700">{p1EpisodePts}</div>
                   <div className="text-lg font-semibold text-gray-700">{p1.name}</div>
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <button
+                      onClick={() => manualAdjust('player1', -1)}
+                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                    >-</button>
+                    <button
+                      onClick={() => manualAdjust('player1', 1)}
+                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                    >+</button>
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-xs px-3 py-1 bg-teal-100 text-teal-700 rounded-full font-medium">
@@ -243,9 +348,22 @@
                 <div className="text-center">
                   <div className="text-4xl font-bold text-teal-700">{p2EpisodePts}</div>
                   <div className="text-lg font-semibold text-gray-700">{p2.name}</div>
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <button
+                      onClick={() => manualAdjust('player2', -1)}
+                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                    >-</button>
+                    <button
+                      onClick={() => manualAdjust('player2', 1)}
+                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                    >+</button>
+                  </div>
                 </div>
               </div>
             </div>
+
+
+
 
             {/* Prediction Buttons */}
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -286,12 +404,20 @@
             <div className="bg-white/10 rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-white font-semibold">Leaderboard</h2>
-                <button
-                  onClick={resetGame}
-                  className="text-xs text-teal-300 hover:text-white"
-                >
-                  Reset All
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={resetScores}
+                    className="text-xs text-teal-300 hover:text-white"
+                  >
+                    Reset Scores
+                  </button>
+                  <button
+                    onClick={resetEverything}
+                    className="text-xs text-red-300 hover:text-white"
+                  >
+                    Reset All
+                  </button>
+                </div>
               </div>
               {gameData.history.length === 0 ? (
                 <p className="text-teal-200 text-sm text-center py-4">No predictions yet!</p>
