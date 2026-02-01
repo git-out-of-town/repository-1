@@ -78,17 +78,35 @@
         }
       }, [showUndo]);
 
+      const setNextEpisode = (data) => {
+        if (data && data.history && data.history.length > 0) {
+          // Find the most recent episode (highest season, then highest episode)
+          let maxSeason = 1, maxEpisode = 0;
+          data.history.forEach(h => {
+            if (h.season > maxSeason || (h.season === maxSeason && h.episode > maxEpisode)) {
+              maxSeason = h.season;
+              maxEpisode = h.episode;
+            }
+          });
+          // Set to next episode
+          setCurrentSeason(maxSeason);
+          setCurrentEpisode(maxEpisode + 1);
+        }
+      };
+
       const loadData = () => {
         try {
           const saved = localStorage.getItem('sacred-chart-data');
           if (saved) {
             const parsed = JSON.parse(saved);
             setGameData(parsed);
+            setNextEpisode(parsed);
           } else {
             // No saved data - load embedded defaults
             const defaults = getDefaultData();
             if (defaults) {
               saveData(defaults);
+              setNextEpisode(defaults);
             } else {
               setShowSetup(true);
             }
