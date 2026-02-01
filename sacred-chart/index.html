@@ -34,6 +34,27 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
+    // Encoded default data (Round 1 baseline)
+    const _d = 'eyJwbGF5ZXJzIjp7InBsYXllcjEiOnsibmFtZSI6IkplYW4iLCJ0b3RhbFBvaW50cyI6NzR9LCJwbGF5ZXIyIjp7Im5hbWUiOiJFZCIsInRvdGFsUG9pbnRzIjo0Mn19LCJoaXN0b3J5IjpbXSwic2NvcmVzIjpbWzIsOCwzLDJdLFsyLDEwLDAsMV0sWzIsMTEsMiwxXSxbMiwxMiwwLDBdLFsyLDEzLDEsMV0sWzIsMTQsMiwwXSxbMiwxNSwwLDJdLFsyLDE2LDAsMV0sWzIsMTcsMSwwXSxbMiwxOCwxLDBdLFsyLDE5LDIsM10sWzIsMjAsMCwwXSxbMiwyMSwxLDBdLFsyLDIyLDIsMV0sWzMsMSwzLDBdLFszLDQsMCwxXSxbMyw2LDEsMV0sWzMsNywxLDBdLFszLDgsMiwxXSxbMyw5LDAsMV0sWzMsMTAsMSwwXSxbMywxMSwzLDFdLFszLDEyLDAsMV0sWzMsMTMsMiwxXSxbMywxNCwxLDBdLFszLDE3LDEsMF0sWzMsMTgsMywwXSxbMywxOSwyLDFdLFszLDIwLDUsMF0sWzMsMjEsMSwxXSxbMywyMiwyLDFdLFs0LDEsMSwyXSxbNCwyLDAsMV0sWzQsNCwxLDBdLFs0LDUsMywxXSxbNCw2LDMsMV0sWzQsNywzLDJdLFs0LDgsMSwxXSxbNCw5LDAsMl0sWzQsMTAsMiw0XSxbNCwxMSwxLDJdLFs0LDEyLDIsMF0sWzQsMTMsNCwxXSxbNCwxNCwyLDFdLFs0LDE1LDQsMF0sWzQsMTYsMiwxXSxbNCwxOCwxLDFdLFs0LDE5LDEsMF1dfQ==';
+
+    const getDefaultData = () => {
+      try {
+        const decoded = JSON.parse(atob(_d));
+        const history = [];
+        const p1Name = decoded.players.player1.name;
+        const p2Name = decoded.players.player2.name;
+        decoded.scores.forEach(([s, e, p1, p2]) => {
+          for (let i = 0; i < p1; i++) {
+            history.push({ season: s, episode: e, predictor: p1Name, correct: true, winner: p1Name, timestamp: new Date(2024, 0, s, e, i).toISOString() });
+          }
+          for (let i = 0; i < p2; i++) {
+            history.push({ season: s, episode: e, predictor: p2Name, correct: true, winner: p2Name, timestamp: new Date(2024, 0, s, e, 30 + i).toISOString() });
+          }
+        });
+        return { players: decoded.players, history };
+      } catch (e) { return null; }
+    };
+
     function PredictionGame() {
       const [gameData, setGameData] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -64,7 +85,13 @@
             const parsed = JSON.parse(saved);
             setGameData(parsed);
           } else {
-            setShowSetup(true);
+            // No saved data - load embedded defaults
+            const defaults = getDefaultData();
+            if (defaults) {
+              saveData(defaults);
+            } else {
+              setShowSetup(true);
+            }
           }
         } catch (e) {
           setShowSetup(true);
