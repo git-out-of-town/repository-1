@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sacred Chart">
+  <meta name="theme-color" content="#115e59">
+  <title>Scrubs Prediction Game - The Sacred Chart</title>
+  
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overscroll-behavior: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function PredictionGame() {
+      const [gameData, setGameData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [currentSeason, setCurrentSeason] = useState(1);
+      const [currentEpisode, setCurrentEpisode] = useState(1);
+      const [showSetup, setShowSetup] = useState(false);
+      const [player1Input, setPlayer1Input] = useState('');
+      const [player2Input, setPlayer2Input] = useState('');
+
+      useEffect(() => {
+        loadData();
+      }, []);
+
+      const loadData = () => {
+        try {
+          const saved = localStorage.getItem('sacred-chart-data');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            setGameData(parsed);
+          } else {
+            setShowSetup(true);
+          }
+        } catch (e) {
+          setShowSetup(true);
+        }
+        setLoading(false);
+      };
+
+      const startGame = () => {
+        if (!player1Input.trim() || !player2Input.trim()) return;
+        const newData = {
+          players: {
+            player1: { name: player1Input.trim(), totalPoints: 0 },
+            player2: { name: player2Input.trim(), totalPoints: 0 }
+          },
+          history: []
+        };
+        saveData(newData);
+        setShowSetup(false);
+      };
+
+      const saveData = (newData) => {
+        setGameData(newData);
+        try {
+          localStorage.setItem('sacred-chart-data', JSON.stringify(newData));
+        } catch (e) {
+          console.error('Failed to save:', e);
+        }
+      };
+
+      const awardPoint = (player, correct) => {
+        const winner = correct ? player : (player === 'player1' ? 'player2' : 'player1');
+        const newData = {
+          ...gameData,
+          players: {
+            ...gameData.players,
+            [winner]: {
+              ...gameData.players[winner],
+              totalPoints: gameData.players[winner].totalPoints + 1
+            }
+          },
+          history: [
+            {
+              season: currentSeason,
+              episode: currentEpisode,
+              predictor: gameData.players[player].name,
+              correct,
+              winner: gameData.players[winner].name,
+              timestamp: new Date().toISOString()
+            },
+            ...gameData.history
+          ]
+        };
+        saveData(newData);
+      };
+
+      const resetGame = () => {
+        if (confirm('Reset all scores and history? You will need to re-enter player names.')) {
+          localStorage.removeItem('sacred-chart-data');
+          setGameData(null);
+          setShowSetup(true);
+          setPlayer1Input('');
+          setPlayer2Input('');
+          setCurrentSeason(1);
+          setCurrentEpisode(1);
+        }
+      };
+
+      if (loading) {
+        return (
+          <div className="min-h-screen bg-teal-900 flex items-center justify-center">
+            <div className="text-white text-xl">Loading...</div>
+          </div>
+        );
+      }
+
+      if (showSetup) {
+        return (
+          <div className="min-h-screen bg-gradient-to-b from-teal-800 to-teal-900 p-4 flex items-center justify-center">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-8">
+                <h1 className="text-2xl font-bold text-white mb-1">🏥 Scrubs Prediction Game</h1>
+                <p className="text-teal-200 text-sm">The Sacred Chart</p>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <h2 className="text-lg font-semibold text-gray-700 text-center mb-4">Enter Player Names</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-500 block mb-1">Player 1</label>
+                    <input
+                      type="text"
+                      value={player1Input}
+                      onChange={(e) => setPlayer1Input(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:border-teal-500"
+                      placeholder="Enter name"
+                      maxLength={15}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500 block mb-1">Player 2</label>
+                    <input
+                      type="text"
+                      value={player2Input}
+                      onChange={(e) => setPlayer2Input(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:border-teal-500"
+                      placeholder="Enter name"
+                      maxLength={15}
+                    />
+                  </div>
+                  <button
+                    onClick={startGame}
+                    disabled={!player1Input.trim() || !player2Input.trim()}
+                    className="w-full py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 text-white rounded-lg font-bold transition-colors"
+                  >
+                    Start Playing!
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const p1 = gameData.players.player1;
+      const p2 = gameData.players.player2;
+
+      // Episode scores
+      const episodeEntries = gameData.history.filter(h => h.season === currentSeason && h.episode === currentEpisode);
+      const p1EpisodePts = episodeEntries.filter(h => h.winner === p1.name).length;
+      const p2EpisodePts = episodeEntries.filter(h => h.winner === p2.name).length;
+      const episodeLeader = p1EpisodePts > p2EpisodePts ? p1.name : p2EpisodePts > p1EpisodePts ? p2.name : 'Tied';
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-teal-800 to-teal-900 p-4">
+          <div className="max-w-md mx-auto">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-white mb-1">🏥 Scrubs Prediction Game</h1>
+              <p className="text-teal-200 text-sm">The Sacred Chart</p>
+            </div>
+
+            {/* Episode Selector */}
+            <div className="bg-white/10 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-center">
+                  <label className="text-teal-200 text-xs block mb-1">Season</label>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setCurrentSeason(Math.max(1, currentSeason - 1))}
+                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                    >-</button>
+                    <span className="text-white text-xl font-bold w-8 text-center">{currentSeason}</span>
+                    <button 
+                      onClick={() => setCurrentSeason(Math.min(9, currentSeason + 1))}
+                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                    >+</button>
+                  </div>
+                </div>
+                <div className="text-3xl text-teal-400">:</div>
+                <div className="text-center">
+                  <label className="text-teal-200 text-xs block mb-1">Episode</label>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setCurrentEpisode(Math.max(1, currentEpisode - 1))}
+                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                    >-</button>
+                    <span className="text-white text-xl font-bold w-8 text-center">{currentEpisode}</span>
+                    <button 
+                      onClick={() => setCurrentEpisode(currentEpisode + 1)}
+                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                    >+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Episode Scoreboard */}
+            <div className="bg-white rounded-xl p-4 mb-4 shadow-lg">
+              <div className="text-center text-xs text-gray-400 mb-2">S{currentSeason} E{currentEpisode}</div>
+              <div className="flex justify-around items-center">
+                <div className="text-center">
+                  <div className="text-4xl font-bold text-teal-700">{p1EpisodePts}</div>
+                  <div className="text-lg font-semibold text-gray-700">{p1.name}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs px-3 py-1 bg-teal-100 text-teal-700 rounded-full font-medium">
+                    {episodeLeader === 'Tied' ? '🤝 Tied!' : `👑 ${episodeLeader} leads`}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-4xl font-bold text-teal-700">{p2EpisodePts}</div>
+                  <div className="text-lg font-semibold text-gray-700">{p2.name}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Prediction Buttons */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-white/10 rounded-xl p-3">
+                <div className="text-white text-center font-semibold mb-2">{p1.name} predicts...</div>
+                <button
+                  onClick={() => awardPoint('player1', true)}
+                  className="w-full py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold mb-2 transition-colors"
+                >
+                  ✓ Correct!
+                </button>
+                <button
+                  onClick={() => awardPoint('player1', false)}
+                  className="w-full py-3 bg-red-400 hover:bg-red-500 text-white rounded-lg font-bold transition-colors"
+                >
+                  ✗ Wrong
+                </button>
+              </div>
+
+              <div className="bg-white/10 rounded-xl p-3">
+                <div className="text-white text-center font-semibold mb-2">{p2.name} predicts...</div>
+                <button
+                  onClick={() => awardPoint('player2', true)}
+                  className="w-full py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold mb-2 transition-colors"
+                >
+                  ✓ Correct!
+                </button>
+                <button
+                  onClick={() => awardPoint('player2', false)}
+                  className="w-full py-3 bg-red-400 hover:bg-red-500 text-white rounded-lg font-bold transition-colors"
+                >
+                  ✗ Wrong
+                </button>
+              </div>
+            </div>
+
+            {/* Leaderboard */}
+            <div className="bg-white/10 rounded-xl p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-white font-semibold">Leaderboard</h2>
+                <button
+                  onClick={resetGame}
+                  className="text-xs text-teal-300 hover:text-white"
+                >
+                  Reset All
+                </button>
+              </div>
+              {gameData.history.length === 0 ? (
+                <p className="text-teal-200 text-sm text-center py-4">No predictions yet!</p>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto">
+                  {[...new Set(gameData.history.map(h => h.season))].sort((a, b) => a - b).map(season => {
+                    const seasonEntries = gameData.history.filter(h => h.season === season);
+                    const p1SeasonPts = seasonEntries.filter(h => h.winner === p1.name).length;
+                    const p2SeasonPts = seasonEntries.filter(h => h.winner === p2.name).length;
+                    const seasonLeader = p1SeasonPts > p2SeasonPts ? '👑' : p2SeasonPts > p1SeasonPts ? '👑' : '🤝';
+                    return (
+                      <div key={season} className="flex justify-between items-center text-sm bg-white/5 rounded-lg px-3 py-2">
+                        <span className="text-teal-200 font-medium">Season {season}</span>
+                        <div className="flex items-center gap-4">
+                          <span className={`text-white ${p1SeasonPts > p2SeasonPts ? 'font-bold' : ''}`}>
+                            {p1SeasonPts > p2SeasonPts && seasonLeader} {p1.name}: {p1SeasonPts}
+                          </span>
+                          <span className={`text-white ${p2SeasonPts > p1SeasonPts ? 'font-bold' : ''}`}>
+                            {p2.name}: {p2SeasonPts} {p2SeasonPts > p1SeasonPts && seasonLeader}
+                          </span>
+                          {p1SeasonPts === p2SeasonPts && <span>{seasonLeader}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* All-Time Tally */}
+                  <div className="flex justify-between items-center text-sm bg-teal-600/40 rounded-lg px-3 py-2 mt-2 border border-teal-400/30">
+                    <span className="text-white font-bold">All-Time</span>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-white ${p1.totalPoints > p2.totalPoints ? 'font-bold' : ''}`}>
+                        {p1.totalPoints > p2.totalPoints && '👑'} {p1.name}: {p1.totalPoints}
+                      </span>
+                      <span className={`text-white ${p2.totalPoints > p1.totalPoints ? 'font-bold' : ''}`}>
+                        {p2.name}: {p2.totalPoints} {p2.totalPoints > p1.totalPoints && '👑'}
+                      </span>
+                      {p1.totalPoints === p2.totalPoints && <span>🤝</span>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <p className="text-center text-teal-300/50 text-xs mt-4">
+              Tap the season/episode before making predictions
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<PredictionGame />);
+  </script>
+</body>
+</html>
