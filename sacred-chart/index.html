@@ -36,14 +36,17 @@
       const [loading, setLoading] = useState(true);
       const [currentSeason, setCurrentSeason] = useState(1);
       const [currentEpisode, setCurrentEpisode] = useState(1);
+      const [showSetup, setShowSetup] = useState(false);
+      const [player1Name, setPlayer1Name] = useState('');
+      const [player2Name, setPlayer2Name] = useState('');
 
-      const defaultData = {
+      const createDefaultData = (p1Name, p2Name) => ({
         players: {
-          jean: { name: 'Jean', totalPoints: 0 },
-          ed: { name: 'Ed', totalPoints: 0 }
+          player1: { name: p1Name, totalPoints: 0 },
+          player2: { name: p2Name, totalPoints: 0 }
         },
         history: []
-      };
+      });
 
       useEffect(() => {
         loadData();
@@ -55,12 +58,21 @@
           if (saved) {
             setGameData(JSON.parse(saved));
           } else {
-            setGameData(defaultData);
+            setShowSetup(true);
           }
         } catch (e) {
-          setGameData(defaultData);
+          setShowSetup(true);
         }
         setLoading(false);
+      };
+
+      const handleSetup = (e) => {
+        e.preventDefault();
+        if (player1Name.trim() && player2Name.trim()) {
+          const newData = createDefaultData(player1Name.trim(), player2Name.trim());
+          saveData(newData);
+          setShowSetup(false);
+        }
       };
 
       const saveData = (newData) => {
@@ -73,7 +85,7 @@
       };
 
       const awardPoint = (predictor, correct) => {
-        const winner = correct ? predictor : (predictor === 'jean' ? 'ed' : 'jean');
+        const winner = correct ? predictor : (predictor === 'player1' ? 'player2' : 'player1');
         const newData = {
           ...gameData,
           players: {
@@ -100,7 +112,9 @@
 
       const resetGame = () => {
         if (confirm('Reset all scores and history?')) {
-          saveData(defaultData);
+          const p1Name = gameData.players.player1.name;
+          const p2Name = gameData.players.player2.name;
+          saveData(createDefaultData(p1Name, p2Name));
           setCurrentSeason(1);
           setCurrentEpisode(1);
         }
@@ -114,21 +128,69 @@
         );
       }
 
-      const jeanPoints = gameData.players.jean.totalPoints;
-      const edPoints = gameData.players.ed.totalPoints;
-      const leader = jeanPoints > edPoints ? 'Jean' : edPoints > jeanPoints ? 'Ed' : 'Tied';
+      if (showSetup || !gameData) {
+        return (
+          <div className="min-h-screen bg-gradient-to-b from-teal-800 to-teal-900 p-4 flex items-center justify-center">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-8">
+                <h1 className="text-2xl font-bold text-white mb-2">🏥 Scrubs Prediction Game</h1>
+                <p className="text-teal-200">The Sacred Chart</p>
+              </div>
+              <form onSubmit={handleSetup} className="bg-white/10 rounded-xl p-6">
+                <h2 className="text-white text-lg font-semibold mb-4 text-center">Enter Player Names</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-teal-200 text-sm block mb-1">Player 1</label>
+                    <input
+                      type="text"
+                      value={player1Name}
+                      onChange={(e) => setPlayer1Name(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg bg-white/20 text-white placeholder-teal-300 border border-teal-400/30 focus:outline-none focus:border-teal-300"
+                      placeholder="Enter name..."
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-teal-200 text-sm block mb-1">Player 2</label>
+                    <input
+                      type="text"
+                      value={player2Name}
+                      onChange={(e) => setPlayer2Name(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg bg-white/20 text-white placeholder-teal-300 border border-teal-400/30 focus:outline-none focus:border-teal-300"
+                      placeholder="Enter name..."
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-white rounded-lg font-bold transition-colors mt-4"
+                  >
+                    Start Game
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      }
+
+      const p1Name = gameData.players.player1.name;
+      const p2Name = gameData.players.player2.name;
+      const p1Points = gameData.players.player1.totalPoints;
+      const p2Points = gameData.players.player2.totalPoints;
+      const leader = p1Points > p2Points ? p1Name : p2Points > p1Points ? p2Name : 'Tied';
 
       // Episode scores
       const episodeEntries = gameData.history.filter(h => h.season === currentSeason && h.episode === currentEpisode);
-      const jeanEpisodePts = episodeEntries.filter(h => h.winner === 'Jean').length;
-      const edEpisodePts = episodeEntries.filter(h => h.winner === 'Ed').length;
-      const episodeLeader = jeanEpisodePts > edEpisodePts ? 'Jean' : edEpisodePts > jeanEpisodePts ? 'Ed' : 'Tied';
+      const p1EpisodePts = episodeEntries.filter(h => h.winner === p1Name).length;
+      const p2EpisodePts = episodeEntries.filter(h => h.winner === p2Name).length;
+      const episodeLeader = p1EpisodePts > p2EpisodePts ? p1Name : p2EpisodePts > p1EpisodePts ? p2Name : 'Tied';
 
       // Season scores
       const seasonEntries = gameData.history.filter(h => h.season === currentSeason);
-      const jeanSeasonPts = seasonEntries.filter(h => h.winner === 'Jean').length;
-      const edSeasonPts = seasonEntries.filter(h => h.winner === 'Ed').length;
-      const seasonLeader = jeanSeasonPts > edSeasonPts ? 'Jean' : edSeasonPts > jeanSeasonPts ? 'Ed' : 'Tied';
+      const p1SeasonPts = seasonEntries.filter(h => h.winner === p1Name).length;
+      const p2SeasonPts = seasonEntries.filter(h => h.winner === p2Name).length;
+      const seasonLeader = p1SeasonPts > p2SeasonPts ? p1Name : p2SeasonPts > p1SeasonPts ? p2Name : 'Tied';
 
       return (
         <div className="min-h-screen bg-gradient-to-b from-teal-800 to-teal-900 p-4">
@@ -179,8 +241,8 @@
               <div className="text-center text-xs text-gray-400 mb-2">S{currentSeason} E{currentEpisode}</div>
               <div className="flex justify-around items-center">
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-teal-700">{jeanEpisodePts}</div>
-                  <div className="text-lg font-semibold text-gray-700">Jean</div>
+                  <div className="text-4xl font-bold text-teal-700">{p1EpisodePts}</div>
+                  <div className="text-lg font-semibold text-gray-700">{p1Name}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xs px-3 py-1 bg-teal-100 text-teal-700 rounded-full font-medium">
@@ -188,42 +250,42 @@
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-teal-700">{edEpisodePts}</div>
-                  <div className="text-lg font-semibold text-gray-700">Ed</div>
+                  <div className="text-4xl font-bold text-teal-700">{p2EpisodePts}</div>
+                  <div className="text-lg font-semibold text-gray-700">{p2Name}</div>
                 </div>
               </div>
             </div>
 
             {/* Prediction Buttons */}
             <div className="grid grid-cols-2 gap-4 mb-4">
-              {/* Jean's predictions */}
+              {/* Player 1's predictions */}
               <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-white text-center font-semibold mb-2">Jean predicts...</div>
+                <div className="text-white text-center font-semibold mb-2">{p1Name} predicts...</div>
                 <button
-                  onClick={() => awardPoint('jean', true)}
+                  onClick={() => awardPoint('player1', true)}
                   className="w-full py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold mb-2 transition-colors"
                 >
                   ✓ Correct!
                 </button>
                 <button
-                  onClick={() => awardPoint('jean', false)}
+                  onClick={() => awardPoint('player1', false)}
                   className="w-full py-3 bg-red-400 hover:bg-red-500 text-white rounded-lg font-bold transition-colors"
                 >
                   ✗ Wrong
                 </button>
               </div>
 
-              {/* Ed's predictions */}
+              {/* Player 2's predictions */}
               <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-white text-center font-semibold mb-2">Ed predicts...</div>
+                <div className="text-white text-center font-semibold mb-2">{p2Name} predicts...</div>
                 <button
-                  onClick={() => awardPoint('ed', true)}
+                  onClick={() => awardPoint('player2', true)}
                   className="w-full py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold mb-2 transition-colors"
                 >
                   ✓ Correct!
                 </button>
                 <button
-                  onClick={() => awardPoint('ed', false)}
+                  onClick={() => awardPoint('player2', false)}
                   className="w-full py-3 bg-red-400 hover:bg-red-500 text-white rounded-lg font-bold transition-colors"
                 >
                   ✗ Wrong
@@ -247,21 +309,21 @@
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto">
                   {[...new Set(gameData.history.map(h => h.season))].sort((a, b) => a - b).map(season => {
-                    const seasonEntries = gameData.history.filter(h => h.season === season);
-                    const jeanSeasonPts = seasonEntries.filter(h => h.winner === 'Jean').length;
-                    const edSeasonPts = seasonEntries.filter(h => h.winner === 'Ed').length;
-                    const seasonLeader = jeanSeasonPts > edSeasonPts ? '👑' : edSeasonPts > jeanSeasonPts ? '👑' : '🤝';
+                    const seasonEntriesForLeaderboard = gameData.history.filter(h => h.season === season);
+                    const p1SeasonPtsLB = seasonEntriesForLeaderboard.filter(h => h.winner === p1Name).length;
+                    const p2SeasonPtsLB = seasonEntriesForLeaderboard.filter(h => h.winner === p2Name).length;
+                    const seasonLeaderIcon = p1SeasonPtsLB > p2SeasonPtsLB ? '👑' : p2SeasonPtsLB > p1SeasonPtsLB ? '👑' : '🤝';
                     return (
                       <div key={season} className="flex justify-between items-center text-sm bg-white/5 rounded-lg px-3 py-2">
                         <span className="text-teal-200 font-medium">Season {season}</span>
                         <div className="flex items-center gap-4">
-                          <span className={`text-white ${jeanSeasonPts > edSeasonPts ? 'font-bold' : ''}`}>
-                            {jeanSeasonPts > edSeasonPts && seasonLeader} Jean: {jeanSeasonPts}
+                          <span className={`text-white ${p1SeasonPtsLB > p2SeasonPtsLB ? 'font-bold' : ''}`}>
+                            {p1SeasonPtsLB > p2SeasonPtsLB && seasonLeaderIcon} {p1Name}: {p1SeasonPtsLB}
                           </span>
-                          <span className={`text-white ${edSeasonPts > jeanSeasonPts ? 'font-bold' : ''}`}>
-                            Ed: {edSeasonPts} {edSeasonPts > jeanSeasonPts && seasonLeader}
+                          <span className={`text-white ${p2SeasonPtsLB > p1SeasonPtsLB ? 'font-bold' : ''}`}>
+                            {p2Name}: {p2SeasonPtsLB} {p2SeasonPtsLB > p1SeasonPtsLB && seasonLeaderIcon}
                           </span>
-                          {jeanSeasonPts === edSeasonPts && <span>{seasonLeader}</span>}
+                          {p1SeasonPtsLB === p2SeasonPtsLB && <span>{seasonLeaderIcon}</span>}
                         </div>
                       </div>
                     );
@@ -270,13 +332,13 @@
                   <div className="flex justify-between items-center text-sm bg-teal-600/40 rounded-lg px-3 py-2 mt-2 border border-teal-400/30">
                     <span className="text-white font-bold">All-Time</span>
                     <div className="flex items-center gap-4">
-                      <span className={`text-white ${jeanPoints > edPoints ? 'font-bold' : ''}`}>
-                        {jeanPoints > edPoints && '👑'} Jean: {jeanPoints}
+                      <span className={`text-white ${p1Points > p2Points ? 'font-bold' : ''}`}>
+                        {p1Points > p2Points && '👑'} {p1Name}: {p1Points}
                       </span>
-                      <span className={`text-white ${edPoints > jeanPoints ? 'font-bold' : ''}`}>
-                        Ed: {edPoints} {edPoints > jeanPoints && '👑'}
+                      <span className={`text-white ${p2Points > p1Points ? 'font-bold' : ''}`}>
+                        {p2Name}: {p2Points} {p2Points > p1Points && '👑'}
                       </span>
-                      {jeanPoints === edPoints && <span>🤝</span>}
+                      {p1Points === p2Points && <span>🤝</span>}
                     </div>
                   </div>
                 </div>
