@@ -244,6 +244,24 @@
         }
       };
 
+      const exportData = () => {
+        const data = localStorage.getItem('sacred-chart-data');
+        if (data) {
+          navigator.clipboard.writeText(data).then(() => {
+            alert('Backup copied to clipboard! Paste it into Notes to save.');
+          }).catch(() => {
+            // Fallback for iOS
+            const ta = document.createElement('textarea');
+            ta.value = data;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            alert('Backup copied! Paste it into Notes to save.');
+          });
+        }
+      };
+
       if (loading) {
         return (
           <div className="min-h-screen bg-teal-900 flex items-center justify-center">
@@ -435,6 +453,12 @@
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-white font-semibold">Leaderboard</h2>
                 <div className="flex gap-3">
+                  <button
+                    onClick={exportData}
+                    className="text-xs text-amber-300 hover:text-white"
+                  >
+                    Export
+                  </button>
                   <button
                     onClick={resetScores}
                     className="text-xs text-teal-300 hover:text-white"
