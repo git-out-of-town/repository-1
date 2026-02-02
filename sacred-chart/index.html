@@ -40,6 +40,29 @@
     };
     const TOTAL_SEASONS = 9;
 
+    // Team colors - Medical (blue) vs Surgical (teal)
+    const TEAMS = {
+      medical: {
+        name: 'Medical',
+        primary: '#0369a1',      // sky-700
+        light: '#0ea5e9',        // sky-500
+        bg: 'from-sky-800 to-sky-900',
+        text: 'text-sky-300',
+        accent: 'bg-sky-600'
+      },
+      surgical: {
+        name: 'Surgical',
+        primary: '#0d9488',      // teal-600
+        light: '#14b8a6',        // teal-500
+        bg: 'from-teal-800 to-teal-900',
+        text: 'text-teal-300',
+        accent: 'bg-teal-600'
+      },
+      tied: {
+        bg: 'from-slate-700 to-slate-800'
+      }
+    };
+
     // Encoded default data (empty for new users)
     const _d = 'eyJwbGF5ZXJzIjp7InBsYXllcjEiOnsibmFtZSI6IlBsYXllciAxIiwidG90YWxQb2ludHMiOjB9LCJwbGF5ZXIyIjp7Im5hbWUiOiJQbGF5ZXIgMiIsInRvdGFsUG9pbnRzIjowfX0sInNjb3JlcyI6W119';
 
@@ -286,9 +309,26 @@
         }
       };
 
+      const importData = () => {
+        const input = prompt('Paste your backup data:');
+        if (!input) return;
+        try {
+          const parsed = JSON.parse(input.trim());
+          // Validate structure
+          if (!parsed.players || !parsed.players.player1 || !parsed.players.player2) {
+            throw new Error('Invalid data structure');
+          }
+          saveData(parsed);
+          setNextEpisode(parsed);
+          alert('Data restored successfully!');
+        } catch (e) {
+          alert('Invalid backup data. Please check and try again.');
+        }
+      };
+
       if (loading) {
         return (
-          <div className="min-h-screen bg-teal-900 flex items-center justify-center">
+          <div className="min-h-screen bg-gradient-to-b from-slate-700 to-slate-800 flex items-center justify-center">
             <div className="text-white text-xl">Loading...</div>
           </div>
         );
@@ -296,33 +336,38 @@
 
       if (showSetup) {
         return (
-          <div className="min-h-screen bg-gradient-to-b from-teal-800 to-teal-900 p-4 flex items-center justify-center">
+          <div className="min-h-screen bg-gradient-to-b from-slate-700 to-slate-800 p-4 flex items-center justify-center">
             <div className="max-w-md w-full">
               <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold text-white mb-1">🏥 Sacred Chart</h1>
-                <p className="text-teal-200 text-sm">Scrubs Prediction Game</p>
+                <p className="text-slate-300 text-sm">Scrubs Prediction Game</p>
               </div>
               <div className="bg-white rounded-xl p-6 shadow-lg">
                 <h2 className="text-lg font-semibold text-gray-700 text-center mb-4">Enter Player Names</h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-gray-500 block mb-1">Player 1</label>
+                  <div className="p-3 rounded-lg border-2" style={{ borderColor: TEAMS.medical.primary, backgroundColor: `${TEAMS.medical.primary}10` }}>
+                    <label className="text-sm font-medium block mb-1" style={{ color: TEAMS.medical.primary }}>
+                      🩺 Medical Team
+                    </label>
                     <input
                       type="text"
                       value={player1Input}
                       onChange={(e) => setPlayer1Input(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:border-teal-500"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none"
+                      style={{ '--tw-ring-color': TEAMS.medical.primary }}
                       placeholder="Enter name"
                       maxLength={15}
                     />
                   </div>
-                  <div>
-                    <label className="text-sm text-gray-500 block mb-1">Player 2</label>
+                  <div className="p-3 rounded-lg border-2" style={{ borderColor: TEAMS.surgical.primary, backgroundColor: `${TEAMS.surgical.primary}10` }}>
+                    <label className="text-sm font-medium block mb-1" style={{ color: TEAMS.surgical.primary }}>
+                      🔪 Surgical Team
+                    </label>
                     <input
                       type="text"
                       value={player2Input}
                       onChange={(e) => setPlayer2Input(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:border-teal-500"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none"
                       placeholder="Enter name"
                       maxLength={15}
                     />
@@ -330,11 +375,17 @@
                   <button
                     onClick={startGame}
                     disabled={!player1Input.trim() || !player2Input.trim()}
-                    className="w-full py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 text-white rounded-lg font-bold transition-colors"
+                    className="w-full py-3 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 disabled:bg-gray-300 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg font-bold transition-colors"
                   >
                     Start Playing!
                   </button>
                 </div>
+                <button
+                  onClick={importData}
+                  className="w-full mt-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Import existing data
+                </button>
               </div>
             </div>
           </div>
@@ -348,22 +399,26 @@
       const episodeEntries = gameData.history.filter(h => h.season === currentSeason && h.episode === currentEpisode);
       const p1EpisodePts = episodeEntries.filter(h => h.winner === p1.name).length;
       const p2EpisodePts = episodeEntries.filter(h => h.winner === p2.name).length;
-      const episodeLeader = p1EpisodePts > p2EpisodePts ? p1.name : p2EpisodePts > p1EpisodePts ? p2.name : 'Tied';
+      const episodeLeader = p1EpisodePts > p2EpisodePts ? 'medical' : p2EpisodePts > p1EpisodePts ? 'surgical' : 'tied';
+      const episodeLeaderName = episodeLeader === 'medical' ? p1.name : episodeLeader === 'surgical' ? p2.name : 'Tied';
+
+      // Dynamic background based on episode leader
+      const bgGradient = episodeLeader === 'medical' ? TEAMS.medical.bg : episodeLeader === 'surgical' ? TEAMS.surgical.bg : TEAMS.tied.bg;
 
       return (
-        <div className="min-h-screen bg-gradient-to-b from-teal-800 to-teal-900 p-4">
+        <div className={`min-h-screen bg-gradient-to-b ${bgGradient} p-4 transition-all duration-500`}>
           <div className="max-w-md mx-auto">
             {/* Header */}
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-white mb-1">🏥 Scrubs Prediction Game</h1>
-              <p className="text-teal-200 text-sm">The Sacred Chart</p>
+              <p className="text-white/70 text-sm">The Sacred Chart</p>
             </div>
 
             {/* Episode Selector */}
             <div className="bg-white/10 rounded-xl p-4 mb-4">
               <div className="flex items-center justify-center gap-4">
                 <div className="text-center">
-                  <label className="text-teal-200 text-xs block mb-1">Season</label>
+                  <label className="text-white/70 text-xs block mb-1">Season</label>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
@@ -371,7 +426,7 @@
                         setCurrentSeason(newSeason);
                         if (newSeason !== currentSeason) setCurrentEpisode(1);
                       }}
-                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                      className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded-lg font-bold transition-colors"
                     >-</button>
                     <span className="text-white text-xl font-bold w-8 text-center">{currentSeason}</span>
                     <button
@@ -380,13 +435,13 @@
                         setCurrentSeason(newSeason);
                         if (newSeason !== currentSeason) setCurrentEpisode(1);
                       }}
-                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                      className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded-lg font-bold transition-colors"
                     >+</button>
                   </div>
                 </div>
-                <div className="text-3xl text-teal-400">:</div>
+                <div className="text-3xl text-white/50">:</div>
                 <div className="text-center">
-                  <label className="text-teal-200 text-xs block mb-1">Episode</label>
+                  <label className="text-white/70 text-xs block mb-1">Episode</label>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
@@ -398,7 +453,7 @@
                           setCurrentEpisode(SEASON_EPISODES[prevSeason]);
                         }
                       }}
-                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                      className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded-lg font-bold transition-colors"
                     >-</button>
                     <span className="text-white text-xl font-bold w-8 text-center">{currentEpisode}</span>
                     <button
@@ -410,12 +465,12 @@
                           setCurrentEpisode(1);
                         }
                       }}
-                      className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
+                      className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded-lg font-bold transition-colors"
                     >+</button>
                   </div>
                 </div>
               </div>
-              <div className="text-center text-teal-300 text-xs mt-2">
+              <div className="text-center text-white/60 text-xs mt-2">
                 {SEASON_EPISODES[currentSeason]} episodes in season {currentSeason}
               </div>
             </div>
@@ -424,36 +479,51 @@
             <div className="bg-white rounded-xl p-4 mb-4 shadow-lg">
               <div className="text-center text-xs text-gray-400 mb-2">S{currentSeason} E{currentEpisode}</div>
               <div className="flex justify-around items-center">
+                {/* Medical (Player 1) */}
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-teal-700">{p1EpisodePts}</div>
+                  <div className="text-4xl font-bold" style={{ color: TEAMS.medical.primary }}>{p1EpisodePts}</div>
                   <div className="text-lg font-semibold text-gray-700">{p1.name}</div>
-                  <div className="flex items-center justify-center gap-2 mt-1">
+                  <div className="text-xs font-medium mb-1" style={{ color: TEAMS.medical.light }}>🩺 Medical</div>
+                  <div className="flex items-center justify-center gap-2">
                     <button
                       onClick={() => manualAdjust('player1', -1)}
-                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                      className="w-7 h-7 rounded-full font-bold text-sm text-white"
+                      style={{ backgroundColor: TEAMS.medical.light }}
                     >-</button>
                     <button
                       onClick={() => manualAdjust('player1', 1)}
-                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                      className="w-7 h-7 rounded-full font-bold text-sm text-white"
+                      style={{ backgroundColor: TEAMS.medical.light }}
                     >+</button>
                   </div>
                 </div>
+                {/* Leader indicator */}
                 <div className="text-center">
-                  <div className="text-xs px-3 py-1 bg-teal-100 text-teal-700 rounded-full font-medium">
-                    {episodeLeader === 'Tied' ? '🤝 Tied!' : `👑 ${episodeLeader} leads`}
+                  <div
+                    className="text-xs px-3 py-1 rounded-full font-medium"
+                    style={{
+                      backgroundColor: episodeLeader === 'medical' ? `${TEAMS.medical.primary}20` : episodeLeader === 'surgical' ? `${TEAMS.surgical.primary}20` : '#f1f5f9',
+                      color: episodeLeader === 'medical' ? TEAMS.medical.primary : episodeLeader === 'surgical' ? TEAMS.surgical.primary : '#64748b'
+                    }}
+                  >
+                    {episodeLeader === 'tied' ? '🤝 Tied!' : `👑 ${episodeLeaderName} leads`}
                   </div>
                 </div>
+                {/* Surgical (Player 2) */}
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-teal-700">{p2EpisodePts}</div>
+                  <div className="text-4xl font-bold" style={{ color: TEAMS.surgical.primary }}>{p2EpisodePts}</div>
                   <div className="text-lg font-semibold text-gray-700">{p2.name}</div>
-                  <div className="flex items-center justify-center gap-2 mt-1">
+                  <div className="text-xs font-medium mb-1" style={{ color: TEAMS.surgical.light }}>🔪 Surgical</div>
+                  <div className="flex items-center justify-center gap-2">
                     <button
                       onClick={() => manualAdjust('player2', -1)}
-                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                      className="w-7 h-7 rounded-full font-bold text-sm text-white"
+                      style={{ backgroundColor: TEAMS.surgical.light }}
                     >-</button>
                     <button
                       onClick={() => manualAdjust('player2', 1)}
-                      className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full font-bold text-sm"
+                      className="w-7 h-7 rounded-full font-bold text-sm text-white"
+                      style={{ backgroundColor: TEAMS.surgical.light }}
                     >+</button>
                   </div>
                 </div>
@@ -465,11 +535,13 @@
 
             {/* Prediction Buttons */}
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-white/10 rounded-xl p-3">
+              {/* Medical (Player 1) predictions */}
+              <div className="rounded-xl p-3 border-2" style={{ backgroundColor: `${TEAMS.medical.primary}15`, borderColor: `${TEAMS.medical.primary}40` }}>
                 <div className="text-white text-center font-semibold mb-2">{p1.name} predicts...</div>
                 <button
                   onClick={() => awardPoint('player1', true)}
-                  className="w-full py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold mb-2 transition-colors"
+                  className="w-full py-3 text-white rounded-lg font-bold mb-2 transition-colors hover:opacity-90"
+                  style={{ backgroundColor: TEAMS.medical.primary }}
                 >
                   ✓ Correct!
                 </button>
@@ -481,11 +553,13 @@
                 </button>
               </div>
 
-              <div className="bg-white/10 rounded-xl p-3">
+              {/* Surgical (Player 2) predictions */}
+              <div className="rounded-xl p-3 border-2" style={{ backgroundColor: `${TEAMS.surgical.primary}15`, borderColor: `${TEAMS.surgical.primary}40` }}>
                 <div className="text-white text-center font-semibold mb-2">{p2.name} predicts...</div>
                 <button
                   onClick={() => awardPoint('player2', true)}
-                  className="w-full py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold mb-2 transition-colors"
+                  className="w-full py-3 text-white rounded-lg font-bold mb-2 transition-colors hover:opacity-90"
+                  style={{ backgroundColor: TEAMS.surgical.primary }}
                 >
                   ✓ Correct!
                 </button>
@@ -519,13 +593,13 @@
               <h2 className="text-white font-semibold mb-3">Leaderboard</h2>
 
               {/* All-Time Tally - Always at top */}
-              <div className="flex justify-between items-center text-sm bg-teal-600/40 rounded-lg px-3 py-2 mb-3 border border-teal-400/30">
+              <div className="flex justify-between items-center text-sm bg-white/20 rounded-lg px-3 py-2 mb-3 border border-white/20">
                 <span className="text-white font-bold">All-Time</span>
                 <div className="flex items-center gap-4">
-                  <span className={`text-white ${p1.totalPoints > p2.totalPoints ? 'font-bold' : ''}`}>
+                  <span className={`${p1.totalPoints > p2.totalPoints ? 'font-bold' : ''}`} style={{ color: TEAMS.medical.light }}>
                     {p1.totalPoints > p2.totalPoints && '👑'} {p1.name}: {p1.totalPoints}
                   </span>
-                  <span className={`text-white ${p2.totalPoints > p1.totalPoints ? 'font-bold' : ''}`}>
+                  <span className={`${p2.totalPoints > p1.totalPoints ? 'font-bold' : ''}`} style={{ color: TEAMS.surgical.light }}>
                     {p2.name}: {p2.totalPoints} {p2.totalPoints > p1.totalPoints && '👑'}
                   </span>
                   {p1.totalPoints === p2.totalPoints && <span>🤝</span>}
@@ -564,16 +638,16 @@
                       <div className="flex items-center gap-4">
                         {hasPlayed ? (
                           <>
-                            <span className={`${isComplete ? 'text-green-100' : 'text-white'} ${p1SeasonPts > p2SeasonPts ? 'font-bold' : ''}`}>
+                            <span className={`${p1SeasonPts > p2SeasonPts ? 'font-bold' : ''}`} style={{ color: isComplete ? '#86efac' : TEAMS.medical.light }}>
                               {p1SeasonPts > p2SeasonPts && seasonLeader} {p1.name}: {p1SeasonPts}
                             </span>
-                            <span className={`${isComplete ? 'text-green-100' : 'text-white'} ${p2SeasonPts > p1SeasonPts ? 'font-bold' : ''}`}>
+                            <span className={`${p2SeasonPts > p1SeasonPts ? 'font-bold' : ''}`} style={{ color: isComplete ? '#86efac' : TEAMS.surgical.light }}>
                               {p2.name}: {p2SeasonPts} {p2SeasonPts > p1SeasonPts && seasonLeader}
                             </span>
                             {p1SeasonPts === p2SeasonPts && <span>{seasonLeader}</span>}
                           </>
                         ) : (
-                          <span className="text-teal-200/40 italic">Not started</span>
+                          <span className="text-white/30 italic">Not started</span>
                         )}
                       </div>
                     </div>
@@ -591,8 +665,14 @@
                 Export
               </button>
               <button
+                onClick={importData}
+                className="text-xs text-amber-300 hover:text-white"
+              >
+                Import
+              </button>
+              <button
                 onClick={resetScores}
-                className="text-xs text-teal-300 hover:text-white"
+                className="text-xs text-slate-300 hover:text-white"
               >
                 Reset Scores
               </button>
