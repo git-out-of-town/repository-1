@@ -34,8 +34,14 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Encoded default data (Round 1 baseline)
-    const _d = 'eyJwbGF5ZXJzIjp7InBsYXllcjEiOnsibmFtZSI6IkplYW4iLCJ0b3RhbFBvaW50cyI6ODF9LCJwbGF5ZXIyIjp7Im5hbWUiOiJFZCIsInRvdGFsUG9pbnRzIjo0NH19LCJoaXN0b3J5IjpbXSwic2NvcmVzIjpbWzIsOCwzLDJdLFsyLDEwLDAsMV0sWzIsMTEsMiwxXSxbMiwxMiwwLDBdLFsyLDEzLDEsMV0sWzIsMTQsMiwwXSxbMiwxNSwwLDJdLFsyLDE2LDAsMV0sWzIsMTcsMSwwXSxbMiwxOCwxLDBdLFsyLDE5LDIsM10sWzIsMjAsMCwwXSxbMiwyMSwxLDBdLFsyLDIyLDIsMV0sWzMsMSwzLDBdLFszLDQsMCwxXSxbMyw2LDEsMV0sWzMsNywxLDBdLFszLDgsMiwxXSxbMyw5LDAsMV0sWzMsMTAsMSwwXSxbMywxMSwzLDFdLFszLDEyLDAsMV0sWzMsMTMsMiwxXSxbMywxNCwxLDBdLFszLDE3LDEsMF0sWzMsMTgsMywwXSxbMywxOSwyLDFdLFszLDIwLDUsMF0sWzMsMjEsMSwxXSxbMywyMiwyLDFdLFs0LDEsMSwyXSxbNCwyLDAsMV0sWzQsNCwxLDBdLFs0LDUsMywxXSxbNCw2LDMsMV0sWzQsNywzLDJdLFs0LDgsMSwxXSxbNCw5LDAsMl0sWzQsMTAsMiw0XSxbNCwxMSwxLDJdLFs0LDEyLDIsMF0sWzQsMTMsNCwxXSxbNCwxNCwyLDFdLFs0LDE1LDQsMF0sWzQsMTYsMiwxXSxbNCwxOCwxLDFdLFs0LDE5LDEsMF0sWzQsMjAsMiwxXSxbNCwyMSwzLDBdLFs0LDIyLDIsMV1dfQ==';
+    // Episode counts per season for Scrubs
+    const SEASON_EPISODES = {
+      1: 24, 2: 22, 3: 22, 4: 25, 5: 24, 6: 22, 7: 11, 8: 19, 9: 13
+    };
+    const TOTAL_SEASONS = 9;
+
+    // Encoded default data (empty for new users)
+    const _d = 'eyJwbGF5ZXJzIjp7InBsYXllcjEiOnsibmFtZSI6IlBsYXllciAxIiwidG90YWxQb2ludHMiOjB9LCJwbGF5ZXIyIjp7Im5hbWUiOiJQbGF5ZXIgMiIsInRvdGFsUG9pbnRzIjowfX0sInNjb3JlcyI6W119';
 
     const getDefaultData = () => {
       try {
@@ -359,13 +365,21 @@
                 <div className="text-center">
                   <label className="text-teal-200 text-xs block mb-1">Season</label>
                   <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => setCurrentSeason(Math.max(1, currentSeason - 1))}
+                    <button
+                      onClick={() => {
+                        const newSeason = Math.max(1, currentSeason - 1);
+                        setCurrentSeason(newSeason);
+                        if (newSeason !== currentSeason) setCurrentEpisode(1);
+                      }}
                       className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
                     >-</button>
                     <span className="text-white text-xl font-bold w-8 text-center">{currentSeason}</span>
-                    <button 
-                      onClick={() => setCurrentSeason(Math.min(9, currentSeason + 1))}
+                    <button
+                      onClick={() => {
+                        const newSeason = Math.min(TOTAL_SEASONS, currentSeason + 1);
+                        setCurrentSeason(newSeason);
+                        if (newSeason !== currentSeason) setCurrentEpisode(1);
+                      }}
                       className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
                     >+</button>
                   </div>
@@ -374,17 +388,35 @@
                 <div className="text-center">
                   <label className="text-teal-200 text-xs block mb-1">Episode</label>
                   <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => setCurrentEpisode(Math.max(1, currentEpisode - 1))}
+                    <button
+                      onClick={() => {
+                        if (currentEpisode > 1) {
+                          setCurrentEpisode(currentEpisode - 1);
+                        } else if (currentSeason > 1) {
+                          const prevSeason = currentSeason - 1;
+                          setCurrentSeason(prevSeason);
+                          setCurrentEpisode(SEASON_EPISODES[prevSeason]);
+                        }
+                      }}
                       className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
                     >-</button>
                     <span className="text-white text-xl font-bold w-8 text-center">{currentEpisode}</span>
-                    <button 
-                      onClick={() => setCurrentEpisode(currentEpisode + 1)}
+                    <button
+                      onClick={() => {
+                        if (currentEpisode < SEASON_EPISODES[currentSeason]) {
+                          setCurrentEpisode(currentEpisode + 1);
+                        } else if (currentSeason < TOTAL_SEASONS) {
+                          setCurrentSeason(currentSeason + 1);
+                          setCurrentEpisode(1);
+                        }
+                      }}
                       className="w-8 h-8 bg-teal-600 text-white rounded-lg font-bold"
                     >+</button>
                   </div>
                 </div>
+              </div>
+              <div className="text-center text-teal-300 text-xs mt-2">
+                {SEASON_EPISODES[currentSeason]} episodes in season {currentSeason}
               </div>
             </div>
 
@@ -466,48 +498,88 @@
               </div>
             </div>
 
+            {/* Episode Finished Button */}
+            <button
+              onClick={() => {
+                if (currentEpisode < SEASON_EPISODES[currentSeason]) {
+                  setCurrentEpisode(currentEpisode + 1);
+                } else if (currentSeason < TOTAL_SEASONS) {
+                  setCurrentSeason(currentSeason + 1);
+                  setCurrentEpisode(1);
+                }
+              }}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold mb-4 transition-colors flex items-center justify-center gap-2"
+            >
+              <span>Episode Finished</span>
+              <span className="text-amber-200">→ S{currentEpisode < SEASON_EPISODES[currentSeason] ? currentSeason : Math.min(currentSeason + 1, TOTAL_SEASONS)} E{currentEpisode < SEASON_EPISODES[currentSeason] ? currentEpisode + 1 : (currentSeason < TOTAL_SEASONS ? 1 : SEASON_EPISODES[TOTAL_SEASONS])}</span>
+            </button>
+
             {/* Leaderboard */}
             <div className="bg-white/10 rounded-xl p-4">
               <h2 className="text-white font-semibold mb-3">Leaderboard</h2>
-              {gameData.history.length === 0 ? (
-                <p className="text-teal-200 text-sm text-center py-4">No predictions yet!</p>
-              ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {[...new Set(gameData.history.map(h => h.season))].sort((a, b) => a - b).map(season => {
-                    const seasonEntries = gameData.history.filter(h => h.season === season);
-                    const p1SeasonPts = seasonEntries.filter(h => h.winner === p1.name).length;
-                    const p2SeasonPts = seasonEntries.filter(h => h.winner === p2.name).length;
-                    const seasonLeader = p1SeasonPts > p2SeasonPts ? '👑' : p2SeasonPts > p1SeasonPts ? '👑' : '🤝';
-                    return (
-                      <div key={season} className="flex justify-between items-center text-sm bg-white/5 rounded-lg px-3 py-2">
-                        <span className="text-teal-200 font-medium">Season {season}</span>
-                        <div className="flex items-center gap-4">
-                          <span className={`text-white ${p1SeasonPts > p2SeasonPts ? 'font-bold' : ''}`}>
-                            {p1SeasonPts > p2SeasonPts && seasonLeader} {p1.name}: {p1SeasonPts}
-                          </span>
-                          <span className={`text-white ${p2SeasonPts > p1SeasonPts ? 'font-bold' : ''}`}>
-                            {p2.name}: {p2SeasonPts} {p2SeasonPts > p1SeasonPts && seasonLeader}
-                          </span>
-                          {p1SeasonPts === p2SeasonPts && <span>{seasonLeader}</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {/* All-Time Tally */}
-                  <div className="flex justify-between items-center text-sm bg-teal-600/40 rounded-lg px-3 py-2 mt-2 border border-teal-400/30">
-                    <span className="text-white font-bold">All-Time</span>
-                    <div className="flex items-center gap-4">
-                      <span className={`text-white ${p1.totalPoints > p2.totalPoints ? 'font-bold' : ''}`}>
-                        {p1.totalPoints > p2.totalPoints && '👑'} {p1.name}: {p1.totalPoints}
-                      </span>
-                      <span className={`text-white ${p2.totalPoints > p1.totalPoints ? 'font-bold' : ''}`}>
-                        {p2.name}: {p2.totalPoints} {p2.totalPoints > p1.totalPoints && '👑'}
-                      </span>
-                      {p1.totalPoints === p2.totalPoints && <span>🤝</span>}
-                    </div>
-                  </div>
+
+              {/* All-Time Tally - Always at top */}
+              <div className="flex justify-between items-center text-sm bg-teal-600/40 rounded-lg px-3 py-2 mb-3 border border-teal-400/30">
+                <span className="text-white font-bold">All-Time</span>
+                <div className="flex items-center gap-4">
+                  <span className={`text-white ${p1.totalPoints > p2.totalPoints ? 'font-bold' : ''}`}>
+                    {p1.totalPoints > p2.totalPoints && '👑'} {p1.name}: {p1.totalPoints}
+                  </span>
+                  <span className={`text-white ${p2.totalPoints > p1.totalPoints ? 'font-bold' : ''}`}>
+                    {p2.name}: {p2.totalPoints} {p2.totalPoints > p1.totalPoints && '👑'}
+                  </span>
+                  {p1.totalPoints === p2.totalPoints && <span>🤝</span>}
                 </div>
-              )}
+              </div>
+
+              {/* All Seasons */}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {Array.from({ length: TOTAL_SEASONS }, (_, i) => i + 1).map(season => {
+                  const seasonEntries = gameData.history.filter(h => h.season === season);
+                  const p1SeasonPts = seasonEntries.filter(h => h.winner === p1.name).length;
+                  const p2SeasonPts = seasonEntries.filter(h => h.winner === p2.name).length;
+                  const hasPlayed = seasonEntries.length > 0;
+
+                  // Check if season is complete (has entry for last episode)
+                  const lastEpisode = SEASON_EPISODES[season];
+                  const isComplete = seasonEntries.some(h => h.episode === lastEpisode);
+
+                  const seasonLeader = p1SeasonPts > p2SeasonPts ? '👑' : p2SeasonPts > p1SeasonPts ? '👑' : '🤝';
+
+                  return (
+                    <div
+                      key={season}
+                      className={`flex justify-between items-center text-sm rounded-lg px-3 py-2 ${
+                        isComplete
+                          ? 'bg-green-600/30 border border-green-500/30'
+                          : hasPlayed
+                            ? 'bg-amber-600/20 border border-amber-500/20'
+                            : 'bg-white/5'
+                      }`}
+                    >
+                      <span className={`font-medium ${isComplete ? 'text-green-300' : hasPlayed ? 'text-amber-200' : 'text-teal-200/50'}`}>
+                        Season {season}
+                        {isComplete && ' ✓'}
+                      </span>
+                      <div className="flex items-center gap-4">
+                        {hasPlayed ? (
+                          <>
+                            <span className={`${isComplete ? 'text-green-100' : 'text-white'} ${p1SeasonPts > p2SeasonPts ? 'font-bold' : ''}`}>
+                              {p1SeasonPts > p2SeasonPts && seasonLeader} {p1.name}: {p1SeasonPts}
+                            </span>
+                            <span className={`${isComplete ? 'text-green-100' : 'text-white'} ${p2SeasonPts > p1SeasonPts ? 'font-bold' : ''}`}>
+                              {p2.name}: {p2SeasonPts} {p2SeasonPts > p1SeasonPts && seasonLeader}
+                            </span>
+                            {p1SeasonPts === p2SeasonPts && <span>{seasonLeader}</span>}
+                          </>
+                        ) : (
+                          <span className="text-teal-200/40 italic">Not started</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Footer Actions */}
